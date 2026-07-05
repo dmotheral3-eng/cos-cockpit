@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CW Mineral · portal cockpit</title>
+<style>
+  body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#FAF8F2;color:#2b2b28;margin:0;padding:28px}
+  h1{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:600;margin:0}
+  .sub{color:#8a857a;font-size:13px;margin-top:4px}
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #E6E1D6;padding-bottom:16px}
+  button{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 14px;border:1px solid #2b2b28;border-radius:8px;background:#fff;cursor:pointer}
+  .stamp{font-size:11px;margin-top:6px;font-family:'IBM Plex Mono',monospace;color:#8a857a}
+  .stamp.err{color:#B4472E}
+  .gate{margin-top:22px;border-radius:12px;padding:20px 22px;border:2px solid #B89149;background:#FBF6EA}
+  .gnum{font-family:'Fraunces',Georgia,serif;font-size:52px;font-weight:600;line-height:1}
+  .glabel{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8a857a}
+  .strip{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+  .m{border:1px solid #E6E1D6;border-radius:10px;padding:16px 18px;background:#fff;flex:1;min-width:120px}
+  .mv{font-size:30px;font-weight:600;font-family:'Fraunces',Georgia,serif;line-height:1}
+  .ml{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a857a;margin-top:8px}
+  .foot{margin-top:22px;font-size:11px;color:#a8a396;font-family:'IBM Plex Mono',monospace;border-top:1px solid #E6E1D6;padding-top:12px}
+</style>
+</head>
+<body>
+  <div class="hd">
+    <div><h1>CW Mineral · portal cockpit</h1><div class="sub">Tenant isolation + pipeline health · connector-proof (direct REST, no MCP)</div></div>
+    <div style="text-align:right"><button onclick="load()">Refresh now</button><div id="stamp" class="stamp"></div></div>
+  </div>
+  <div id="gate" class="gate">
+    <div class="glabel">Tenant-safety gate</div>
+    <div style="display:flex;align-items:baseline;gap:14px;margin-top:6px">
+      <div id="gnum" class="gnum">—</div><div id="gtext" style="font-size:14px">loading…</div>
+    </div>
+  </div>
+  <div class="strip">
+    <div class="m"><div id="rls" class="mv">—</div><div class="ml">RLS-off tables</div></div>
+    <div class="m"><div id="delta" class="mv">—</div><div class="ml">Tie-out DELTA</div></div>
+    <div class="m"><div id="cdex" class="mv">—</div><div class="ml">CDEX claimable</div></div>
+    <div class="m"><div id="ten" class="mv">—</div><div class="ml">Tenants</div></div>
+  </div>
+  <div id="foot" class="foot">source: CW Mineral · fn_cw_portal_cockpit_snapshot (aggregate only) · direct REST, no MCP</div>
+<script>
+var URL_="https://rmsafbcpzyxywekygevu.supabase.co/rest/v1/rpc/fn_cw_portal_cockpit_snapshot";
+var ANON="sb_publishable_PDF_VHVrrrLwXPKkicTMNQ_KjKKr5NO";
+function set(id,v,good){var el=document.getElementById(id);el.textContent=v;el.style.color=good?'#6B8E5A':'#B4472E';}
+async function load(){
+  var s=document.getElementById('stamp'); s.className='stamp'; s.textContent='fetching…';
+  try{
+    var r=await fetch(URL_,{method:'POST',headers:{apikey:ANON,Authorization:'Bearer '+ANON,'Content-Type':'application/json'},body:'{}'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    var gate=d.tenant_safety_open, green=gate===0;
+    var gn=document.getElementById('gnum'); gn.textContent=gate; gn.style.color=green?'#6B8E5A':'#B4472E';
+    var g=document.getElementById('gate'); g.style.borderColor=green?'#6B8E5A':'#B89149'; g.style.background=green?'#F1F6EC':'#FBF6EA';
+    document.getElementById('gtext').textContent=green?'tables on USING(true) — clean. Safe to onboard a 2nd tenant.':'tables still on USING(true) — anon-exposed / blocks a 2nd tenant. Drive to 0.';
+    set('rls',d.rls_off_tables,d.rls_off_tables===0); set('delta',d.tie_out_delta,d.tie_out_delta===0);
+    document.getElementById('cdex').textContent=d.cdex_claimable; document.getElementById('ten').textContent=d.tenants;
+    document.getElementById('foot').textContent='source: CW Mineral · fn_cw_portal_cockpit_snapshot (aggregate only) · direct REST, no MCP · '+d.as_of;
+    s.textContent='live · '+new Date().toLocaleTimeString();
+  }catch(e){ s.className='stamp err'; s.textContent='fetch error: '+(e.message||e); }
+}
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>
